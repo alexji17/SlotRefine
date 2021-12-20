@@ -184,10 +184,6 @@ class NatSLU(Model):
         # create inference graph
         self.create_test_graph()
 
-        # single-pass or two-pass mode
-        self.twopass = self.arg.twopass
-
-        self.evaluate = self.arg.evaluate
         self.best_f1 = 0
 
     def add_optimizer(self, loss, global_step, isAdam=True):
@@ -555,7 +551,7 @@ class NatSLU(Model):
                 intent_losses.append(intent_loss)
 
                 # second pass
-                if self.twopass:
+                if self.arg.twopass:
                     slot = train_ouput[0]
                     second_pass_in_tags = self.get_start_tags(slot)
                     train_ouput, loss, slot_loss, intent_loss, _ = \
@@ -673,7 +669,7 @@ class NatSLU(Model):
                                                                       self.intent: label_ids})
 
                 # second pass
-                if self.twopass:
+                if self.arg.twopass:
                     slot = eval_outputs[0]
                     second_pass_in_tags = self.get_start_tags(slot)
                     eval_outputs = sess.run(self.eval_outputs, feed_dict={self.input_data: seq_in_ids,
@@ -774,7 +770,7 @@ class NatSLU(Model):
                                                                        self.intent: label_ids})
 
                 # second pass
-                if self.twopass:
+                if self.arg.twopass:
                     slot = infer_outputs[0]
                     second_pass_in_tags = self.get_start_tags(slot)
                     infer_outputs = sess.run(self.test_outputs, feed_dict={self.input_data: seq_in_ids,
@@ -819,7 +815,7 @@ class NatSLU(Model):
         if self.arg.restore:
             self.saver.restore(sess, self.save_path)
 
-        if self.evaluate:
+        if self.arg.evaluate:
             self.evaluation(sess)
         else:
             for epoch in range(self.arg.max_epochs):
