@@ -184,6 +184,9 @@ class NatSLU(Model):
         # create inference graph
         self.create_test_graph()
 
+        # single-pass or two-pass mode
+        self.twopass = self.arg.twopass
+
     def add_optimizer(self, loss, global_step, isAdam=True):
         """
         Add optimizer for training variables
@@ -549,16 +552,17 @@ class NatSLU(Model):
                 intent_losses.append(intent_loss)
 
                 # second pass
-                slot = train_ouput[0]
-                second_pass_in_tags = self.get_start_tags(slot)
-                train_ouput, loss, slot_loss, intent_loss, _ = \
-                    sess.run([self.train_outputs, self.loss, self.slot_loss, self.intent_loss, self.train_op],
-                             feed_dict={self.input_data: seq_in_ids,
-                                        self.input_tags: second_pass_in_tags,
-                                        self.sequence_length: sequence_length,
-                                        self.slots: seq_out_ids,
-                                        self.slot_weights: seq_out_weights,
-                                        self.intent: label_ids})
+                if self.twopass:
+                    slot = train_ouput[0]
+                    second_pass_in_tags = self.get_start_tags(slot)
+                    train_ouput, loss, slot_loss, intent_loss, _ = \
+                        sess.run([self.train_outputs, self.loss, self.slot_loss, self.intent_loss, self.train_op],
+                                 feed_dict={self.input_data: seq_in_ids,
+                                            self.input_tags: second_pass_in_tags,
+                                            self.sequence_length: sequence_length,
+                                            self.slots: seq_out_ids,
+                                            self.slot_weights: seq_out_weights,
+                                            self.intent: label_ids})
             except:
                 print("Runtime Error in train_one_epoch")
                 break
@@ -635,7 +639,7 @@ class NatSLU(Model):
                 correct_slot_label.append(correct_temp)
 
             f1, precision, recall = local_utils.computeF1Score(correct_slot_label, pred_slot_label)
-            # print("F1: {}, precision: {}, recall: {}".format(f1, precision, recall))
+            print("F1: {}, precision: {}, recall: {}".format(f1, precision, recall))
 
             return f1, slot_acc, intent_acc, sent_acc
 
@@ -666,13 +670,14 @@ class NatSLU(Model):
                                                                       self.intent: label_ids})
 
                 # second pass
-                slot = eval_outputs[0]
-                second_pass_in_tags = self.get_start_tags(slot)
-                eval_outputs = sess.run(self.eval_outputs, feed_dict={self.input_data: seq_in_ids,
-                                                                      self.input_tags: second_pass_in_tags,
-                                                                      self.sequence_length: sequence_length,
-                                                                      self.slots: seq_out_ids,
-                                                                      self.intent: label_ids})
+                if self.twopass:
+                    slot = eval_outputs[0]
+                    second_pass_in_tags = self.get_start_tags(slot)
+                    eval_outputs = sess.run(self.eval_outputs, feed_dict={self.input_data: seq_in_ids,
+                                                                          self.input_tags: second_pass_in_tags,
+                                                                          self.sequence_length: sequence_length,
+                                                                          self.slots: seq_out_ids,
+                                                                          self.intent: label_ids})
             except:
                 print("Runtime Error in evaluation")
                 break
@@ -762,13 +767,14 @@ class NatSLU(Model):
                                                                        self.intent: label_ids})
 
                 # second pass
-                slot = infer_outputs[0]
-                second_pass_in_tags = self.get_start_tags(slot)
-                infer_outputs = sess.run(self.test_outputs, feed_dict={self.input_data: seq_in_ids,
-                                                                       self.input_tags: second_pass_in_tags,
-                                                                       self.sequence_length: sequence_length,
-                                                                       self.slots: seq_out_ids,
-                                                                       self.intent: label_ids})
+                if self.twopass:
+                    slot = infer_outputs[0]
+                    second_pass_in_tags = self.get_start_tags(slot)
+                    infer_outputs = sess.run(self.test_outputs, feed_dict={self.input_data: seq_in_ids,
+                                                                           self.input_tags: second_pass_in_tags,
+                                                                           self.sequence_length: sequence_length,
+                                                                           self.slots: seq_out_ids,
+                                                                           self.intent: label_ids})
             except:
                 print("Runtime Error in inference")
                 break
@@ -891,6 +897,7 @@ if __name__ == "__main__":
     # Others
     parser.add_argument('-logdir', dest="log_dir", default='./log/', help='Log directory')
     parser.add_argument('-config', dest="config_dir", default='./config/', help='Config directory')
+    parser.add_argument('--twopass', type=bool, default=False, help='Double pass inference')
     # fmt: on
 
     args = parser.parse_args()

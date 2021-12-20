@@ -10,10 +10,11 @@ do
         do
           for RES_DROPOUT in 0.1
           do
-            CUDA_VISIBLE_DEVICES=1 python models.py --patience=0 --dataset=snips --split=' ' --max_epochs=200 \
+            CUDA_VISIBLE_DEVICES=1 python models.py --patience=0 --dataset=snips --split=' ' --max_epochs=25 \
             --batch_size=${BATCH} --valid_data_path=test --lr=${LR} --alpha=0.6 --rm_nums=True --hidden_size=$1 \
             --filter_size=$2 --num_heads=$3 --encode_mode='UTF-8' --num_encoder_layers=${ENCODE_LAYER} \
-            --attention_dropout=${ATT_DROPOUT} --residual_dropout=${RES_DROPOUT} --multiply_embedding_mode='none'
+            --attention_dropout=${ATT_DROPOUT} --residual_dropout=${RES_DROPOUT} --multiply_embedding_mode='none' \
+            --twopass=True
           done
         done
       done
