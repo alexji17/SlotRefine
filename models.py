@@ -187,6 +187,7 @@ class NatSLU(Model):
         # single-pass or two-pass mode
         self.twopass = self.arg.twopass
 
+        self.evaluate = self.arg.evaluate
         self.best_f1 = 0
 
     def add_optimizer(self, loss, global_step, isAdam=True):

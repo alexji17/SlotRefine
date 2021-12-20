@@ -2,7 +2,7 @@ CUDA_VISIBLE_DEVICES=1 python models.py --patience=0 \
   --dataset=snips \
   --split=' ' \
   --max_epochs=10 \
-  --batch_size=64\
+  --batch_size=64 \
   --valid_data_path=test \
   --lr=1e-3 \
   --alpha=0.6 \
