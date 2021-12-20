@@ -1,7 +1,7 @@
 CUDA_VISIBLE_DEVICES=1 python models.py --patience=0 \
   --dataset=snips \
   --split=' ' \
-  --max_epochs=25 \
+  --max_epochs=10 \
   --batch_size=64 \
   --valid_data_path=test \
   --lr=1e-3 \
@@ -15,4 +15,7 @@ CUDA_VISIBLE_DEVICES=1 python models.py --patience=0 \
   --attention_dropout=0.05 \
   --residual_dropout=0.1 \
   --multiply_embedding_mode='none' \
-  --twopass=False
+  --twopass=False \
+  --evaluate=True \
+  -restore \
+  --bw=32

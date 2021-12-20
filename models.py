@@ -818,6 +818,13 @@ class NatSLU(Model):
             self.saver.restore(sess, self.save_path)
 
         if self.arg.evaluate:
+            for v in tf.trainable_variables():
+                if v.name.endswith('matrix:0'):
+                    x = sess.run(tf.reduce_max(tf.abs(v)))
+                    scale = 1.0 * x / 2**(self.arg.bw-1)
+                    print(v.name, v.shape, x, self.arg.bw, scale)
+                    sess.run(tf.assign(v, tf.clip_by_value(tf.round(v / scale), -2**(self.arg.bw-1), 2**(self.arg.bw-1)-1) * scale))
+                    #print(sess.run(tf.unique(tf.reshape(v, [-1]))))
             self.evaluation(sess)
         else:
             for epoch in range(self.arg.max_epochs):
@@ -907,6 +914,7 @@ if __name__ == "__main__":
     parser.add_argument('-config', dest="config_dir", default='./config/', help='Config directory')
     parser.add_argument('--twopass', type=bool, default=False, help='Double pass inference')
     parser.add_argument('--evaluate', type=bool, default=False, help='Evaluate only')
+    parser.add_argument('--bw', type=int, default=8, help='Quantization bit width')
     # fmt: on
 
     args = parser.parse_args()
