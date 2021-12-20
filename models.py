@@ -187,6 +187,8 @@ class NatSLU(Model):
         # single-pass or two-pass mode
         self.twopass = self.arg.twopass
 
+        self.best_f1 = 0
+
     def add_optimizer(self, loss, global_step, isAdam=True):
         """
         Add optimizer for training variables
@@ -697,6 +699,10 @@ class NatSLU(Model):
             if last_batch:
                 break
 
+        if f1 > self.best_f1:
+            self.best_f1 = f1
+            self.saver.save(sess, self.save_path)
+
         print("Eval Results: F1: {}, intent_acc: {}, slot_acc: {}, sent_acc: {}".format(f1, intent_acc,
                                                                                         slot_acc, sent_acc))
         print("Running Params: {}-{}-{}-{}-{}-{}-{}-{}".format(self.arg.batch_size, self.arg.lr, self.arg.hidden_size,
@@ -812,19 +818,22 @@ class NatSLU(Model):
         if self.arg.restore:
             self.saver.restore(sess, self.save_path)
 
-        for epoch in range(self.arg.max_epochs):
-            self.logger.info('Epoch: {}'.format(epoch))
-
-            self.train_one_epoch(sess, epoch)
-
+        if self.evaluate:
             self.evaluation(sess)
+        else:
+            for epoch in range(self.arg.max_epochs):
+                self.logger.info('Epoch: {}'.format(epoch))
 
-            if self.arg.dump:
-                if epoch % 20 == 0:
+                self.train_one_epoch(sess, epoch)
+
+                self.evaluation(sess)
+
+                if self.arg.dump:
+                    if epoch % 20 == 0:
+                        self.inference(sess, epoch, self.arg.remain_diff, self.arg.dump)
+                else:
+                    print('dump is False')
                     self.inference(sess, epoch, self.arg.remain_diff, self.arg.dump)
-            else:
-                print('dump is False')
-                self.inference(sess, epoch, self.arg.remain_diff, self.arg.dump)
 
 
 if __name__ == "__main__":
@@ -898,6 +907,7 @@ if __name__ == "__main__":
     parser.add_argument('-logdir', dest="log_dir", default='./log/', help='Log directory')
     parser.add_argument('-config', dest="config_dir", default='./config/', help='Config directory')
     parser.add_argument('--twopass', type=bool, default=False, help='Double pass inference')
+    parser.add_argument('--evaluate', type=bool, default=False, help='Evaluate only')
     # fmt: on
 
     args = parser.parse_args()
