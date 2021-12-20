@@ -698,8 +698,10 @@ class NatSLU(Model):
 
         if f1 > self.best_f1:
             self.best_f1 = f1
-            self.saver.save(sess, self.save_path)
+            if not self.arg.evaluate:
+                self.saver.save(sess, self.save_path)
 
+        print("Best F1: {}".format(self.best_f1))
         print("Eval Results: F1: {}, intent_acc: {}, slot_acc: {}, sent_acc: {}".format(f1, intent_acc,
                                                                                         slot_acc, sent_acc))
         print("Running Params: {}-{}-{}-{}-{}-{}-{}-{}".format(self.arg.batch_size, self.arg.lr, self.arg.hidden_size,
