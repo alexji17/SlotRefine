@@ -747,7 +747,68 @@ class NatSLU(Model):
                 pred.append('\t'.join([words_output, p_i_output, p_slot_output]))
             return ref, pred
 
+        def valid(eval_outputs):
+
+            # print(type(eval_outputs))
+            # print(eval_outputs[0].shape)    # pred_slots
+            # print(eval_outputs[1].shape)    # pred_intents
+            # print(eval_outputs[2].shape)    # correct_slots
+            # print(eval_outputs[3].shape)    # correct_intent
+            # print(eval_outputs[4].shape)    # sequence_length
+
+            # intent
+            # pred_intent = eval_outputs[1].argmax(-1).reshape(-1)
+            pred_intent = eval_outputs[1][:, :, 2:].argmax(-1).reshape(-1) + 2
+            correct_intent = eval_outputs[3]
+            intent_acc_sample_wise = correct_intent == pred_intent
+            intent_acc = intent_acc_sample_wise.astype(np.float)
+            intent_acc = np.mean(intent_acc) * 100.0
+            # print("intent acc is {}".format(intent_acc))
+
+            # slot acc
+            sequence_length = eval_outputs[4]
+            correct_slot = eval_outputs[2]
+            pred_slot = eval_outputs[0].reshape((correct_slot.shape[0], correct_slot.shape[1], -1))
+            pred_slot = pred_slot[:, :, 2:].argmax(-1) + 2
+
+            slot_acc_sample_wise = correct_slot == pred_slot  # [batch_size, max_len]
+            a = np.arange(correct_slot.shape[1])
+            mask = np.tile(np.expand_dims(a, 0), [correct_slot.shape[0], 1]) >= np.expand_dims(sequence_length, -1)
+
+            slot_acc_sample_wise = np.logical_or(mask, slot_acc_sample_wise)
+            slot_acc_sample_wise = np.logical_and.reduce(slot_acc_sample_wise, -1)
+            slot_acc_sample_wise = slot_acc_sample_wise.astype(np.float)
+            slot_acc = np.mean(slot_acc_sample_wise) * 100.0
+
+            # sent acc
+            sent_acc_sampel_wise = np.logical_and(intent_acc_sample_wise, slot_acc_sample_wise)
+            sent_acc = np.mean(sent_acc_sampel_wise.astype(np.float)) * 100.0
+
+            # calculate slot F1
+            pred_slot_label = []
+            correct_slot_label = []
+
+            for pred_line, correct_line, length in zip(pred_slot, correct_slot, sequence_length):
+                pred_temp = []
+                correct_temp = []
+                for i in range(length):
+                    pred_temp.append(self.seq_out_tokenizer.index_word[pred_line[i]])
+                    correct_temp.append(self.seq_out_tokenizer.index_word[correct_line[i]])
+                pred_slot_label.append(pred_temp)
+                correct_slot_label.append(correct_temp)
+
+            f1, precision, recall = local_utils.computeF1Score(correct_slot_label, pred_slot_label)
+            print("F1: {}, precision: {}, recall: {}".format(f1, precision, recall))
+
+            return f1, slot_acc, intent_acc, sent_acc
+
         step = 0
+        f1 = 0
+        slot_acc = 0
+        intent_acc = 0
+        sent_acc = 0
+        sample_cnt = 0
+
         if dump:
             fout = open(os.path.join(self.full_test_path, '{}_{}'.format(self.arg.infer_file, epoch)), 'w')
 
@@ -784,6 +845,18 @@ class NatSLU(Model):
                 print("Runtime Error in inference")
                 break
 
+            f1_batch, slot_acc_batch, intent_acc_batch, sent_acc_batch = self.evaluation().valid(eval_outputs)
+
+            f1 = (f1 * sample_cnt + f1_batch * len(eval_outputs[0])) \
+                 / (sample_cnt + len(eval_outputs[0]))
+            slot_acc = (slot_acc * sample_cnt + slot_acc_batch * len(eval_outputs[0])) \
+                       / (sample_cnt + len(eval_outputs[0]))
+            intent_acc = (intent_acc * sample_cnt + intent_acc_batch * len(eval_outputs[0])) \
+                         / (sample_cnt + len(eval_outputs[0]))
+            sent_acc = (sent_acc * sample_cnt + sent_acc_batch * len(eval_outputs[0])) \
+                       / (sample_cnt + len(eval_outputs[0]))
+            sample_cnt += len(eval_outputs[0])
+
             # output
             cnt += self.arg.batch_size
             if dump:
@@ -796,6 +869,9 @@ class NatSLU(Model):
 
             if last_batch:
                 break
+
+        print("Eval Results: F1: {}, intent_acc: {}, slot_acc: {}, sent_acc: {}".format(f1, intent_acc,
+                                                                                        slot_acc, sent_acc))
 
         if dump:
             fout.flush()
