@@ -825,7 +825,7 @@ class NatSLU(Model):
                     print(v.name, v.shape, x, self.arg.bw, scale)
                     sess.run(tf.assign(v, tf.clip_by_value(tf.round(v / scale), -2**(self.arg.bw-1), 2**(self.arg.bw-1)-1) * scale))
                     #print(sess.run(tf.unique(tf.reshape(v, [-1]))))
-            self.evaluation(sess)
+            self.inference(sess, 0, self.arg.remain_diff, self.arg.dump)
         else:
             for epoch in range(self.arg.max_epochs):
                 self.logger.info('Epoch: {}'.format(epoch))

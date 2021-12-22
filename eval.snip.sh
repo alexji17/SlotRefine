@@ -7,11 +7,11 @@ CUDA_VISIBLE_DEVICES=1 python models.py --patience=0 \
   --lr=1e-3 \
   --alpha=0.6 \
   --rm_nums=True \
-  --hidden_size=104 \
-  --filter_size=104 \
+  --hidden_size=96 \
+  --filter_size=96 \
   --num_heads=8 \
   --encode_mode='UTF-8' \
-  --num_encoder_layers=5 \
+  --num_encoder_layers=4 \
   --attention_dropout=0.05 \
   --residual_dropout=0.1 \
   --multiply_embedding_mode='none' \
